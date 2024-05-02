@@ -2,3 +2,4 @@ build
 nickfem.egg-info
 *.pyc
 __pycache__
+nickfem/version.py
