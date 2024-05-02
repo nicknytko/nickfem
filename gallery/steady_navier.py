@@ -4,7 +4,7 @@ import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 import nickfem
 import matplotlib.pyplot as plt
-from tqdm import tqdm
+import time
 
 import plotly.graph_objects as go
 import plotly.figure_factory as ff
@@ -111,11 +111,22 @@ R = sp.block_diag([R_2, R_2, R_1])
 ub = np.concatenate((vel_x_bdy(x2, y2), vel_y_bdy(x2, y2), p_bdy(x1, y1)))
 u = ub.copy()
 
+# Project out irrotational part of initial solution to obtain div-free field as initial u_hat
+N2 = len(x2)
+Dx2 = nickfem.assemble_operator(mesh2, div_x_operator, element_degree=(2, 2))
+Dy2 = nickfem.assemble_operator(mesh2, div_y_operator, element_degree=(2, 2))
+phi = spla.spsolve(A, Dx2@ub[:N2] + Dy2@ub[N2:2*N2])
+u -= np.concatenate((Dx2@phi, Dy2@phi, np.zeros(len(x1))))
+
 eps = 1/350
 
 u_hat = u.copy()
 i = 0
 use_iterative = False
+
+print('Performing Picard iteration...')
+
+t_start = time.monotonic()
 
 while True:
     C_u_hat = assemble_conv_operator(u_hat)
@@ -135,10 +146,15 @@ while True:
     diff = la.norm(u_hat_new - u_hat)
     u_hat = u_hat_new
 
+    print(f'{i:<2}: L2 diff {diff:.3e}')
+
     i += 1
     if diff < 1e-5:
         u = u_hat
         break
+
+t_end = time.monotonic()
+print(f'Elapsed time: {t_end-t_start:.3f} seconds')
 
 # Decompose solution into velocity and pressure components
 u_plot = u + ub
