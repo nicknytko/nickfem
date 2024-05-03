@@ -19,6 +19,7 @@ parser.add_argument('--invert', action='store_true', default=False)
 parser.add_argument('--reynolds', type=float, default=10.0)
 parser.add_argument('--inlet-velocity', type=float, default=1.0)
 parser.add_argument('--enclosed', action='store_true', default=True)
+parser.add_argument('--contour', action='store_true')
 args = parser.parse_args()
 
 # Read image, normalize between 0 and 1, and convert to greyscale
@@ -149,7 +150,7 @@ u = ub.copy()
 # Forcing term
 f = np.concatenate((np.zeros(len(x2)), np.zeros(len(x2)), M_p @ img_grey.flatten()))
 
-eps = 1 / args.reynolds
+eps = 2 / args.reynolds
 u_hat = u.copy()
 i = 0
 use_iterative = True
@@ -166,12 +167,14 @@ def plot_soln(u):
     v_norm = la.norm(u_plot[:2*N2].reshape((2, -1)), axis=0)
 
     plt.cla()
-    #plt.tripcolor(x2, y2, v_norm, triangles=mesh2_lin.triangles, shading='gouraud')
-    plt.imshow(img_original, cmap='gray', extent=(-1, 1, 1, -1))
-    N = mesh.num_vertices
-    h, w = img_original.shape
-    plt.contour(x1.reshape((h, w)), y1.reshape((h, w)),
-                v_norm[:N].reshape((h, w)), 32)
+    if args.contour:
+        plt.imshow(img_original, cmap='gray', extent=(-1, 1, 1, -1), interpolation='bilinear')
+        N = mesh.num_vertices
+        h, w = img_original.shape
+        plt.contour(x1.reshape((h, w)), y1.reshape((h, w)),
+                    v_norm[:N].reshape((h, w)), 16)
+    else:
+        plt.tripcolor(x2, y2, v_norm, triangles=mesh2_lin.triangles, shading='gouraud')
     plt.show()
     plt.pause(0.5)
 
