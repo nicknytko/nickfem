@@ -10,6 +10,19 @@ class Mesh:
     """Triangular mesh"""
 
     def __init__(self, vertices, triangles=None, degree=1):
+        """
+        Instantiates a triangle mesh object.  Currently supports
+        only linear or quadratic triangles.
+
+        Parameters
+        ----------
+        vertices : numpy.ndarray of size (num_verts, 2)
+          Vertices of the triangles
+        triangles : numpy.ndarray of size (num_tris, ...)
+          Integer pointers to vertices.  Each triangle should have
+          either 3 entries (linear) or 6 entries (quadratic)
+        """
+
         self.vertices = vertices
         self.num_vertices = vertices.shape[0]
         if triangles is None:
@@ -38,6 +51,65 @@ class Mesh:
             raise RuntimeError('Could not find "triangles" cell in mesh data')
 
         return Mesh(verts, tris, degree=1)
+
+    def rectangular_mesh(logical_width, logical_height, x_lim=(-1, 1), y_lim=(-1, 1)):
+        """
+        Creates a rectangular triangle mesh.
+
+        Parameters
+        ----------
+        logical_width : integer
+          Number of vertices in the horizontal direction
+        logical height : integer
+          Number of vertices in the vertical direction
+        x_lim : tuple
+          X limits for the physical domain
+        y_lim : tuple
+          Y limits for the physical domain
+
+        Returns
+        -------
+        nickfem.Mesh object
+        """
+
+        x_ = np.linspace(x_lim[0], x_lim[1], logical_width)
+        y_ = np.linspace(y_lim[0], y_lim[1], logical_height)
+
+        x, y = np.meshgrid(x_, y_, indexing='xy')
+        x = x.flatten()
+        y = y.flatten()
+        triangles = []
+
+        def ij_to_idx(i, j):
+            return j * logical_width + i
+
+        for i in range(logical_width - 1):
+            for j in range(logical_height - 1):
+                # First triangle:
+                # i,j
+                # |     \
+                # i,j+1 --- i+1,j+1
+
+                triangles.append(np.array([
+                    ij_to_idx(i, j),
+                    ij_to_idx(i, j+1),
+                    ij_to_idx(i+1, j+1)
+                ]))
+
+                # Second triangle:
+                # i,j   --- i+1, j
+                #        \    |
+                #           i+1,j+1
+
+                triangles.append(np.array([
+                    ij_to_idx(i, j),
+                    ij_to_idx(i+1, j+1),
+                    ij_to_idx(i+1, j)
+                ]))
+        triangles = np.array(triangles)
+
+        return Mesh(np.column_stack((x, y)), triangles)
+
 
     def refine(self):
         """
