@@ -234,7 +234,6 @@ def integrate_element(tri, verts, fn, trial_degree, test_degree, integral_degree
         [x2 - x0, y2 - y0]
     ])
     J_det = la.det(J)
-    J_inv = la.inv(J)
 
     # Transform cubature points into global space
     xg_global, yg_global = J @ np.row_stack((xg, yg)) + np.array([x0, y0])[:, None]
