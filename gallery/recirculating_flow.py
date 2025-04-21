@@ -3,9 +3,11 @@ import numpy.linalg as la
 import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 import nickfem
+from nickfem.misc import Timer
 import matplotlib.pyplot as plt
+import pyamg
 
-N = 64
+N = 128
 x_ = np.linspace(-1, 1, N)
 y_ = np.linspace(-1, 1, N)
 
@@ -54,13 +56,19 @@ def convection_operator(args):
 
     return np.einsum('jmk, mk, k, ik -> ij', grad_u, w_eval, wg, v)
 
-A = nickfem.assemble_operator(mesh2, diffusion_operator)
-C = nickfem.assemble_operator(mesh2, convection_operator)
-Z = A / 200 + C
+with Timer('Assembly'):
+    A = nickfem.assemble_operator(mesh2, diffusion_operator)
+    C = nickfem.assemble_operator(mesh2, convection_operator)
+    Z = A / 200 + C
 
-ub = dirichlet_bdy(x2, y2)
-f = -Z @ ub
-u = R_int @ spla.spsolve(R_int.T@Z@R_int, R_int.T@f) + ub
+with Timer('MG Setup'):
+    ml = pyamg.smoothed_aggregation_solver(R_int.T@Z@R_int, symmetry='nonsymmetric')
+
+with Timer('MG Solve (BiCGStab)'):
+    ub = dirichlet_bdy(x2, y2)
+    f = -Z @ ub
+
+    u = R_int @ ml.solve(R_int.T@f, accel='bicgstab') + ub
 
 import plotly.graph_objects as go
 import plotly.figure_factory as ff
